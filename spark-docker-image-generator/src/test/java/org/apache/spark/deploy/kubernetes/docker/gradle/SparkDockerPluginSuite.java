@@ -35,7 +35,8 @@ import org.junit.Test;
 public final class SparkDockerPluginSuite {
 
     private static final File TEST_PROJECT_DIR = Paths.get("src/test/resources/plugin-test-project").toFile();
-
+    private static final File TEST_LIBRARY_PROJECT_DIR =
+            Paths.get("src/test/resources/plugin-test-library-project").toFile();
     private String dockerTag;
 
     @Before
@@ -54,6 +55,11 @@ public final class SparkDockerPluginSuite {
 
     @Test
     public void testSetupProject() throws Exception {
+        runSetupProjectTest(TEST_PROJECT_DIR);
+        runSetupProjectTest(TEST_LIBRARY_PROJECT_DIR);
+    }
+
+    private void runSetupProjectTest(File testProjectDir) throws Exception {
         GradleRunner runner = GradleRunner.create()
                 .withPluginClasspath()
                 .withArguments(
@@ -62,7 +68,7 @@ public final class SparkDockerPluginSuite {
                         String.format("-Ddocker-tag=%s", dockerTag),
                         "--stacktrace",
                         "--info")
-                .withProjectDir(TEST_PROJECT_DIR)
+                .withProjectDir(testProjectDir)
                 .forwardOutput();
         runner.build();
 
@@ -83,6 +89,7 @@ public final class SparkDockerPluginSuite {
                         containerId,
                         "/opt/spark/jars",
                         "guava-21.0.jar",
+                        "commons-compress-1.18.jar",
                         "commons-io-2.4.jar",
                         "plugin-test-project-1.0.jar");
                 expectFilesInDir(

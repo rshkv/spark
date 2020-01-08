@@ -15,36 +15,4 @@
  * limitations under the License.
  */
 
-buildscript {
-  repositories {
-    jcenter()
-    maven { url "http://palantir.bintray.com/releases" }
-  }
-}
-
-plugins {
-  id 'org.apache.spark.deploy.kubernetes.docker.gradle'
-}
-
-repositories {
-  jcenter()
-  maven { url "http://palantir.bintray.com/releases" }
-  maven { url System.env.MAVEN_REPO }
-}
-
-apply plugin: 'java'
-version '1.0'
-group 'org.apache.spark'
-sourceCompatibility = 1.8
-
-dependencies {
-  compile 'com.google.guava:guava:21.0'
-  compile 'org.apache.commons:commons-compress:1.18'
-  sparkDockerRuntime 'commons-io:commons-io:2.4'
-}
-
-sparkDocker {
-  baseImage 'openjdk:8-jdk-slim'
-  imageName 'docker.palantir.test/spark/spark-test-app'
-  tags System.getProperty('docker-tag')
-}
+rootProject.name = "plugin-test-project"
