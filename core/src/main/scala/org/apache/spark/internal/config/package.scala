@@ -524,6 +524,13 @@ package object config {
       .toSequence
       .createWithDefault(Nil)
 
+  private[spark] val CONDA_BOOTSTRAP_PACKAGE_URLS_USER_INFO =
+    ConfigBuilder("spark.conda.bootstrapPackageUrlsUserInfo")
+      .doc("Basic auth information (in 'user:pw' format) to be added to package urls that will " +
+        "be added to the conda environment. Only relevant when main class is CondaRunner.")
+      .stringConf
+      .createOptional
+
   private[spark] val CONDA_CHANNEL_URLS = ConfigBuilder("spark.conda.channelUrls")
     .doc("The URLs the Conda channels to use when resolving the conda packages. "
       + "Only relevant when main class is CondaRunner.")
@@ -787,7 +794,7 @@ package object config {
       .createWithDefault(false)
 
   private[spark] val SHUFFLE_IO_PLUGIN_CLASS =
-    ConfigBuilder("spark.shuffle.sort.io.plugin.class")
+    ConfigBuilder("spark.shuffle.sort.io.storage.plugin.class.v2")
       .doc("Name of the class to use for shuffle IO.")
       .stringConf
       .createWithDefault(classOf[LocalDiskShuffleDataIO].getName)

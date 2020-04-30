@@ -77,6 +77,11 @@ abstract class Optimizer(sessionCatalog: SessionCatalog)
     }.nonEmpty
   }
 
+  override protected val blacklistedOnceBatches: Set[String] =
+    Set("Pullup Correlated Expressions",
+      "Extract Python UDFs"
+    )
+
   protected def fixedPoint = FixedPoint(SQLConf.get.optimizerMaxIterations)
 
   /**
@@ -176,7 +181,9 @@ abstract class Optimizer(sessionCatalog: SessionCatalog)
       PropagateEmptyRelation) ::
     Batch("Pullup Correlated Expressions", Once,
       PullupCorrelatedPredicates) ::
-    Batch("Subquery", Once,
+    // Subquery batch applies the optimizer rules recursively. Therefore, it makes no sense
+    // to enforce idempotence on it and we change this batch from Once to FixedPoint(1).
+    Batch("Subquery", FixedPoint(1),
       OptimizeSubqueries) ::
     Batch("Replace Operators", fixedPoint,
       RewriteExceptAll,
@@ -189,7 +196,9 @@ abstract class Optimizer(sessionCatalog: SessionCatalog)
       RemoveLiteralFromGroupExpressions,
       RemoveRepetitionFromGroupExpressions) :: Nil ++
     operatorOptimizationBatch) :+
-    Batch("Join Reorder", Once,
+    // Since join costs in AQP can change between multiple runs, there is no reason that we have an
+    // idempotence enforcement on this batch. We thus make it FixedPoint(1) instead of Once.
+    Batch("Join Reorder", FixedPoint(1),
       CostBasedJoinReorder) :+
     Batch("Remove Redundant Sorts", Once,
       RemoveRedundantSorts) :+
@@ -197,7 +206,8 @@ abstract class Optimizer(sessionCatalog: SessionCatalog)
       DecimalAggregates) :+
     Batch("Object Expressions Optimization", fixedPoint,
       EliminateMapObjects,
-      CombineTypedFilters) :+
+      CombineTypedFilters,
+      ObjectSerializerPruning) :+
     Batch("LocalRelation", fixedPoint,
       ConvertToLocalRelation,
       PropagateEmptyRelation) :+
@@ -593,11 +603,6 @@ object ColumnPruning extends Rule[LogicalPlan] {
     // Prunes the unused columns from child of `DeserializeToObject`
     case d @ DeserializeToObject(_, _, child) if !child.outputSet.subsetOf(d.references) =>
       d.copy(child = prunedChild(child, d.references))
-
-    case p @ Project(_, s: SerializeFromObject) if p.references != s.outputSet =>
-      val usedRefs = p.references
-      val prunedSerializer = s.serializer.filter(usedRefs.contains)
-      p.copy(child = SerializeFromObject(prunedSerializer, s.child))
 
     // Prunes the unused columns from child of Aggregate/Expand/Generate/ScriptTransformation
     case a @ Aggregate(_, _, child) if !child.outputSet.subsetOf(a.references) =>
